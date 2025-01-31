@@ -170,7 +170,7 @@ def print_dp_table(str1, str2):
     # Print the DP table
     for row in range(len(dp_table)-1, -1, -1):
         print(f"{str1[row]} {dp_table[row]}")
-    str2 = ", ".join(str2)
+    str2 = "  ".join(str2)
     print(f"   {str2}")
 
 # Example usage (uncomment to test your functions)
@@ -178,4 +178,4 @@ def print_dp_table(str1, str2):
 # print(extract_balanced_parentheses("a(b)c(d)e(f(g)h)i")) 
 # print("Weighted Edit Distance:", weighted_edit_distance("data", "date"))
 # print("Closest Match:", closest_match("natrual", ["natural", "language", "processing", "data", "science"]))
-# print_dp_table("kitten", "sitting")
+print_dp_table("kitten", "sitting")
