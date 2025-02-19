@@ -257,6 +257,7 @@ def generate_params():
         batch_size = random.choice(batch_sizes)
         parameters = [n_hidden, activation, lr, optim, batch_size]
         if not parameters in visited:
+            visited.append(parameters)
             return parameters
 
 trials = 60
@@ -382,6 +383,6 @@ print("tokenization details:")
 print(tokenization_df.head())
 
 exp_df = pd.DataFrame(metric_log)
-exp_df.to_csv('experiments_log.csv', index=False)
+exp_df.to_csv('word_token_experiments_log.csv', index=False)
 print("experiments details:")
 print(exp_df.head())

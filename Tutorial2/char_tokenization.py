@@ -71,7 +71,7 @@ class MLP(object):
         """
         if self.device is not None:
             # use '/GPU:0' instead of 'gpu:0' for using gpu on mac
-            with tf.device('/GPU:0' if self.device == 'gpu' else 'cpu'):
+            with tf.device('/gpu:0' if self.device == 'gpu' else 'cpu'):
                 self.y = self.compute_output(X)
         else:
             self.y = self.compute_output(X)
@@ -244,6 +244,7 @@ def generate_params():
         batch_size = random.choice(batch_sizes)
         parameters = [n_hidden, activation, lr, optim, batch_size]
         if not parameters in visited:
+            visited.append(parameters)
             return parameters
 
 trials = 60
@@ -368,6 +369,6 @@ print("tokenization details:")
 print(tokenization_df.head())
 
 exp_df = pd.DataFrame(metric_log)
-exp_df.to_csv('experiments_log.csv', index=False)
+exp_df.to_csv('char_token_experiments_log.csv', index=False)
 print("experiments details:")
 print(exp_df.head())
