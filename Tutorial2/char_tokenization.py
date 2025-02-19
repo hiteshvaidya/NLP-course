@@ -41,9 +41,8 @@ class MLP(object):
         # list of all weights and biases
         self.W = []
         self.b = []
-
         # Initialize weights and biases for each layer
-        for l in range(len(self.layers[1:])):
+        for l in range(len(self.layers)):
             if l == 0:
                 continue
             W = tf.Variable(tf.random.normal([
@@ -52,17 +51,9 @@ class MLP(object):
             self.W.append(W)
             b = tf.Variable(tf.zeros([1, self.layers[l]]))
             self.b.append(b)
-
+        
         # List of variables to update during backpropagation
         self.variables = self.W + self.b
-
-        # activation function
-        if activation == 'ReLU':
-            self.activation = tf.nn.relu()
-        elif activation == 'Tanh':
-            self.activation = tf.nn.tanh()
-        elif activation == 'LeakyReLU':
-            self.activation = tf.nn.leaky_relu()
 
     def forward(self, X):
         """
@@ -71,7 +62,7 @@ class MLP(object):
         """
         if self.device is not None:
             # use '/GPU:0' instead of 'gpu:0' for using gpu on mac
-            with tf.device('/gpu:0' if self.device == 'gpu' else 'cpu'):
+            with tf.device('gpu:0' if self.device == 'gpu' else 'cpu'):
                 self.y = self.compute_output(X)
         else:
             self.y = self.compute_output(X)
@@ -105,9 +96,15 @@ class MLP(object):
         """
         # Cast X to float32
         z = tf.cast(X, dtype=tf.float32)
-        for l in range(len(self.layers)-1):
+        for l in range(len(self.W)-1):
             h = tf.matmul(z, self.W[l]) + self.b[l]
-            z = self.activation(h)
+            # activation function
+            if activation == 'ReLU':
+                z = tf.nn.relu(h)
+            elif activation == 'Tanh':
+                z = tf.nn.tanh(h)
+            elif activation == 'LeakyReLU':
+                z = tf.nn.leaky_relu(h)
         
         # Output layer (logits)
         output = tf.matmul(z, self.W[-1]) + self.b[-1]
@@ -250,6 +247,7 @@ def generate_params():
 trials = 60
 
 while trials >=0:
+    print(f"\nTraining for parameter combination:  {60-trials+1}, \n")
     random_seed = set_new_seed(trials)
 
     parameters = generate_params()
@@ -257,12 +255,6 @@ while trials >=0:
     activation = parameters[1]
     lr = parameters[2]
     optim = parameters[3]
-    if optim == 'Adam':
-        optimizer = tf.optimizers.Adam(learning_rate=lr)
-    elif optim == 'SGD':
-        optimizer = tf.optimizers.SGD(learning_rate=lr)
-    elif optim == 'RMSProp':
-        optimizer = tf.optimizers.RMSprop(learning_rate=lr)
     batch_size = parameters[-1]
     
     best_test_acc = -100
@@ -270,12 +262,21 @@ while trials >=0:
     best_recall = None
     best_loss = None
     for i in range(3):
+        print(f"trial {i+1} for current parameter setting...")
+        # Initialize the optimizer
+        if optim == 'Adam':
+            optimizer = tf.optimizers.Adam(learning_rate=lr)
+        elif optim == 'SGD':
+            optimizer = tf.optimizers.SGD(learning_rate=lr)
+        elif optim == 'RMSProp':
+            optimizer = tf.optimizers.RMSprop(learning_rate=lr)
+            
         # Instantiate the MLP model.
         model = MLP(nn_layers, activation, device='gpu')
 
         num_batches = int(np.ceil(X_train.shape[0] / batch_size))
 
-        print(f"\nTraining for trial {60-trials+1}, \n")
+        
         for epoch in range(epochs):
             # Shuffle training data at the start of each epoch.
             indices = np.arange(X_train.shape[0])
@@ -360,6 +361,7 @@ while trials >=0:
     metric_log['test_loss'].append(round(best_loss, 4))
     metric_log['precision'].append(round(best_precision, 4))
     metric_log['recall'].append(round(best_recall, 4))
+    trials -= 1
 
 
 tokenization_df = pd.DataFrame(tokenization_table)

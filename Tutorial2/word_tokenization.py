@@ -44,7 +44,7 @@ class MLP(object):
         self.b = []
 
         # Initialize weights and biases for each layer
-        for l in range(len(self.layers[1:])):
+        for l in range(len(self.layers)):
             if l == 0:
                 continue
             W = tf.Variable(tf.random.normal([
@@ -57,14 +57,6 @@ class MLP(object):
         # List of variables to update during backpropagation
         self.variables = self.W + self.b
 
-        # activation function
-        if activation == 'ReLU':
-            self.activation = tf.nn.relu()
-        elif activation == 'Tanh':
-            self.activation = tf.nn.tanh()
-        elif activation == 'LeakyReLU':
-            self.activation = tf.nn.leaky_relu()
-
     def forward(self, X):
         """
         Forward pass.
@@ -72,7 +64,7 @@ class MLP(object):
         """
         if self.device is not None:
             # use '/GPU:0' instead of 'gpu:0' for using gpu on mac
-            with tf.device('/GPU:0' if self.device == 'gpu' else 'cpu'):
+            with tf.device('gpu:0' if self.device == 'gpu' else 'cpu'):
                 self.y = self.compute_output(X)
         else:
             self.y = self.compute_output(X)
@@ -108,7 +100,13 @@ class MLP(object):
         z = tf.cast(X, dtype=tf.float32)
         for l in range(len(self.layers)-1):
             h = tf.matmul(z, self.W[l]) + self.b[l]
-            z = self.activation(h)
+            # activation function
+            if activation == 'ReLU':
+                self.activation = tf.nn.relu(h)
+            elif activation == 'Tanh':
+                self.activation = tf.nn.tanh(h)
+            elif activation == 'LeakyReLU':
+                self.activation = tf.nn.leaky_relu(h)
         
         # Output layer (logits)
         output = tf.matmul(z, self.W[-1]) + self.b[-1]
@@ -230,19 +228,6 @@ batch_sizes = [32, 64, 128]
 # optimizer
 optims = ['SGD', 'Adam', 'RMSProp']
 
-# Instantiate the MLP model.
-model = MLP([X_train.shape[1], 128, 64, 32, 2], activation, device='gpu')
-
-# learning rate
-learning_rate = 0.01
-
-# optimizer
-optimizer = {}
-optimizer['Adam'] = tf.optimizers.Adam(learning_rate=learning_rate)
-optimizer['SGD'] = tf.optimizers.SGD(learning_rate=learning_rate)
-optimizer['RMSProp'] = tf.optimizers.RMSprop(learning_rate=learning_rate)
-optim_choice = 'SGD'
-
 # -------------------------------
 # Training Parameters and Loop
 # -------------------------------
@@ -263,6 +248,7 @@ def generate_params():
 trials = 60
 
 while trials >=0:
+    print(f"\nTraining for parameter combination: {60-trials+1}, \n")
     random_seed = set_new_seed(trials)
 
     parameters = generate_params()
@@ -270,12 +256,6 @@ while trials >=0:
     activation = parameters[1]
     lr = parameters[2]
     optim = parameters[3]
-    if optim == 'Adam':
-        optimizer = tf.optimizers.Adam(learning_rate=lr)
-    elif optim == 'SGD':
-        optimizer = tf.optimizers.SGD(learning_rate=lr)
-    elif optim == 'RMSProp':
-        optimizer = tf.optimizers.RMSprop(learning_rate=lr)
     batch_size = parameters[-1]
 
     best_test_acc = -100
@@ -283,6 +263,15 @@ while trials >=0:
     best_recall = None
     best_loss = None
     for i in range(3):
+        print(f"trial {i+1} for current parameter setting...")
+        # Initialize the optimizer
+        if optim == 'Adam':
+            optimizer = tf.optimizers.Adam(learning_rate=lr)
+        elif optim == 'SGD':
+            optimizer = tf.optimizers.SGD(learning_rate=lr)
+        elif optim == 'RMSProp':
+            optimizer = tf.optimizers.RMSprop(learning_rate=lr)
+            
         # Instantiate the MLP model.
         model = MLP(nn_layers, activation, device='gpu')
 
