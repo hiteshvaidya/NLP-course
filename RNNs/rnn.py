@@ -1,15 +1,22 @@
 import torch
+import torch.nn as nn
 import numpy as np
 import time
 import pickle as pkl
 from tqdm import tqdm
+from loguru import logger
+import matplotlib.pyplot as plt
+import torch.nn.functional as F
+
+# Configure the logger
+logger.add("rnn.log", format="{time} {level} {message}", level="INFO")
 
 class RNNCell(torch.nn.Module):
     """A single step RNN in pytorch
 
     h_t = tanh(x_t * W_x + h_{t-1} * W_h + b)
     """
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_size, hidden_size, device):
         """for a single step
 
         Args:
@@ -18,9 +25,9 @@ class RNNCell(torch.nn.Module):
         """
         super(RNNCell, self).__init__()
         self.hidden_size = hidden_size
-        self.W_x = torch.nn.Parameter(torch.randn(input_size, hidden_size))
-        self.W_h = torch.nn.Parameter(torch.randn(hidden_size, hidden_size))
-        self.b_h = torch.nn.Parameter(torch.zeros(hidden_size))
+        self.W_x = torch.nn.Parameter(torch.randn(input_size, hidden_size)).to(device)
+        self.W_h = torch.nn.Parameter(torch.randn(hidden_size, hidden_size)).to(device)
+        self.b_h = torch.nn.Parameter(torch.zeros(hidden_size)).to(device)
 
     def forward(self, x_t, h_prev):
         """forward pass from input to hidden state
@@ -40,18 +47,18 @@ class GRUCell(torch.nn.Module):
     h~_t = tanh(x_t * W_h + (r_t dot h_{t-1}) * U_h + b_h)
     h_t = (1 - z_t) dot h_{t-1} + z_t dot h~_t
     """
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_size, hidden_size, device):
         super(GRUCell, self).__init__()
         self.hidden_size = hidden_size
-        self.W_z = torch.nn.Parameter(torch.randn(input_size, hidden_size))
-        self.W_r = torch.nn.Parameter(torch.randn(input_size, hidden_size))
-        self.W_h = torch.nn.Parameter(torch.randn(input_size, hidden_size))
-        self.U_z = torch.nn.Parameter(torch.randn(hidden_size, hidden_size))
-        self.U_r = torch.nn.Parameter(torch.zeros(hidden_size, hidden_size))
-        self.U_h = torch.nn.Parameter(torch.zeros(hidden_size, hidden_size))
-        self.b_z = torch.nn.Parameter(torch.zeros(hidden_size))
-        self.b_r = torch.nn.Parameter(torch.zeros(hidden_size))
-        self.b_h = torch.nn.Parameter(torch.zeros(hidden_size))
+        self.W_z = torch.nn.Parameter(torch.randn(input_size, hidden_size)).to(device)
+        self.W_r = torch.nn.Parameter(torch.randn(input_size, hidden_size)).to(device)
+        self.W_h = torch.nn.Parameter(torch.randn(input_size, hidden_size)).to(device)
+        self.U_z = torch.nn.Parameter(torch.randn(hidden_size, hidden_size)).to(device)
+        self.U_r = torch.nn.Parameter(torch.zeros(hidden_size, hidden_size)).to(device)
+        self.U_h = torch.nn.Parameter(torch.zeros(hidden_size, hidden_size)).to(device)
+        self.b_z = torch.nn.Parameter(torch.zeros(hidden_size)).to(device)
+        self.b_r = torch.nn.Parameter(torch.zeros(hidden_size)).to(device)
+        self.b_h = torch.nn.Parameter(torch.zeros(hidden_size)).to(device)
         
 
     def forward(self, x_t, h_prev):
@@ -71,18 +78,18 @@ class LSTMCell(torch.nn.Module):
     def __init__(self, input_size, hidden_size):
         super(LSTMCell, self).__init__()
         self.hidden_size = hidden_size
-        self.W_f = torch.nn.Parameter(torch.randn(input_size, hidden_size))
-        self.W_i = torch.nn.Parameter(torch.randn(input_size, hidden_size))
-        self.W_c = torch.nn.Parameter(torch.randn(input_size, hidden_size))
-        self.W_o = torch.nn.Parameter(torch.randn(input_size, hidden_size))
-        self.U_f = torch.nn.Parameter(torch.randn(hidden_size, hidden_size))
-        self.U_i = torch.nn.Parameter(torch.randn(hidden_size, hidden_size))
-        self.U_c = torch.nn.Parameter(torch.randn(hidden_size, hidden_size))
-        self.U_o = torch.nn.Parameter(torch.randn(hidden_size, hidden_size))
-        self.b_f = torch.nn.Parameter(torch.zeros(hidden_size))
-        self.b_i = torch.nn.Parameter(torch.zeros(hidden_size))
-        self.b_c = torch.nn.Parameter(torch.zeros(hidden_size))
-        self.b_o = torch.nn.Parameter(torch.zeros(hidden_size))
+        self.W_f = torch.nn.Parameter(torch.randn(input_size, hidden_size)).to(device)
+        self.W_i = torch.nn.Parameter(torch.randn(input_size, hidden_size)).to(device)
+        self.W_c = torch.nn.Parameter(torch.randn(input_size, hidden_size)).to(device)
+        self.W_o = torch.nn.Parameter(torch.randn(input_size, hidden_size)).to(device)
+        self.U_f = torch.nn.Parameter(torch.randn(hidden_size, hidden_size)).to(device)
+        self.U_i = torch.nn.Parameter(torch.randn(hidden_size, hidden_size)).to(device)
+        self.U_c = torch.nn.Parameter(torch.randn(hidden_size, hidden_size)).to(device)
+        self.U_o = torch.nn.Parameter(torch.randn(hidden_size, hidden_size)).to(device)
+        self.b_f = torch.nn.Parameter(torch.zeros(hidden_size)).to(device)
+        self.b_i = torch.nn.Parameter(torch.zeros(hidden_size)).to(device)
+        self.b_c = torch.nn.Parameter(torch.zeros(hidden_size)).to(device)
+        self.b_o = torch.nn.Parameter(torch.zeros(hidden_size)).to(device)
 
     def forward(self, x_t, h_prev, c_prev):
         f_t = torch.sigmoid(x_t @ self.W_f + h_prev @ self.U_f + self.b_f)
@@ -94,25 +101,25 @@ class LSTMCell(torch.nn.Module):
         return h_t, c_t
     
 class mLSTMCell(torch.nn.Module):
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_size, hidden_size, device):
         super(mLSTMCell, self).__init__()
         self.hidden_size = hidden_size
-        self.W_i = torch.nn.Parameter(torch.randn(input_size, hidden_size))
-        self.W_m = torch.nn.Parameter(torch.randn(input_size, hidden_size))
-        self.U_i = torch.nn.Parameter(torch.randn(hidden_size, hidden_size))
-        self.U_m = torch.nn.Parameter(torch.randn(hidden_size, hidden_size))
-        self.W_f = torch.nn.Parameter(torch.randn(input_size, hidden_size))
-        self.U_f = torch.nn.Parameter(torch.randn(hidden_size, hidden_size))
-        self.W_o = torch.nn.Parameter(torch.randn(input_size, hidden_size))
-        self.U_o = torch.nn.Parameter(torch.randn(hidden_size, hidden_size))
-        self.W_c = torch.nn.Parameter(torch.randn(input_size, hidden_size))
-        self.U_c = torch.nn.Parameter(torch.randn(hidden_size, hidden_size))
+        self.W_i = torch.nn.Parameter(torch.randn(input_size, hidden_size)).to(device)
+        self.W_m = torch.nn.Parameter(torch.randn(input_size, hidden_size)).to(device)
+        self.U_i = torch.nn.Parameter(torch.randn(hidden_size, hidden_size)).to(device)
+        self.U_m = torch.nn.Parameter(torch.randn(hidden_size, hidden_size)).to(device)
+        self.W_f = torch.nn.Parameter(torch.randn(input_size, hidden_size)).to(device)
+        self.U_f = torch.nn.Parameter(torch.randn(hidden_size, hidden_size)).to(device)
+        self.W_o = torch.nn.Parameter(torch.randn(input_size, hidden_size)).to(device)
+        self.U_o = torch.nn.Parameter(torch.randn(hidden_size, hidden_size)).to(device)
+        self.W_c = torch.nn.Parameter(torch.randn(input_size, hidden_size)).to(device)
+        self.U_c = torch.nn.Parameter(torch.randn(hidden_size, hidden_size)).to(device)
 
-        self.b_m = torch.nn.Parameter(torch.zeros(hidden_size))
-        self.b_i = torch.nn.Parameter(torch.zeros(hidden_size))
-        self.b_o = torch.nn.Parameter(torch.zeros(hidden_size))
-        self.b_f = torch.nn.Parameter(torch.zeros(hidden_size))
-        self.b_c = torch.nn.Parameter(torch.zeros(hidden_size))
+        self.b_m = torch.nn.Parameter(torch.zeros(hidden_size)).to(device)
+        self.b_i = torch.nn.Parameter(torch.zeros(hidden_size)).to(device)
+        self.b_o = torch.nn.Parameter(torch.zeros(hidden_size)).to(device)
+        self.b_f = torch.nn.Parameter(torch.zeros(hidden_size)).to(device)
+        self.b_c = torch.nn.Parameter(torch.zeros(hidden_size)).to(device)
 
     def forward(self, x_t, h_prev, c_prev):
         m_t = x_t @ self.W_mx + h_prev @ self.U_mh + self.b_m
@@ -130,21 +137,21 @@ class mGRU(torch.nn.Module):
     """
     source: https://arxiv.org/pdf/1907.00455
     """
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_size, hidden_size, device):
         super(mGRU, self).__init__()
         self.hidden_size = hidden_size
-        self.W_m = torch.nn.Parameter(torch.randn(input_size, hidden_size))
-        self.W_z = torch.nn.Parameter(torch.randn(input_size, hidden_size))
-        self.W_r = torch.nn.Parameter(torch.randn(input_size, hidden_size))
-        self.W_h = torch.nn.Parameter(torch.randn(input_size, hidden_size))
-        self.U_z = torch.nn.Parameter(torch.randn(hidden_size, hidden_size))
-        self.U_r = torch.nn.Parameter(torch.zeros(hidden_size, hidden_size))
-        self.U_h = torch.nn.Parameter(torch.zeros(hidden_size, hidden_size))
+        self.W_m = torch.nn.Parameter(torch.randn(input_size, hidden_size)).to(device)
+        self.W_z = torch.nn.Parameter(torch.randn(input_size, hidden_size)).to(device)
+        self.W_r = torch.nn.Parameter(torch.randn(input_size, hidden_size)).to(device)
+        self.W_h = torch.nn.Parameter(torch.randn(input_size, hidden_size)).to(device)
+        self.U_z = torch.nn.Parameter(torch.randn(hidden_size, hidden_size)).to(device)
+        self.U_r = torch.nn.Parameter(torch.zeros(hidden_size, hidden_size)).to(device)
+        self.U_h = torch.nn.Parameter(torch.zeros(hidden_size, hidden_size)).to(device)
         
-        self.b_m = torch.nn.Parameter(torch.zeros(hidden_size))
-        self.b_z = torch.nn.Parameter(torch.zeros(hidden_size))
-        self.b_r = torch.nn.Parameter(torch.zeros(hidden_size))
-        self.b_h = torch.nn.Parameter(torch.zeros(hidden_size))
+        self.b_m = torch.nn.Parameter(torch.zeros(hidden_size)).to(device)
+        self.b_z = torch.nn.Parameter(torch.zeros(hidden_size)).to(device)
+        self.b_r = torch.nn.Parameter(torch.zeros(hidden_size)).to(device)
+        self.b_h = torch.nn.Parameter(torch.zeros(hidden_size)).to(device)
 
     def forward(self, x_t, h_prev):
         m_t = x_t @ self.W_m + h_prev @ self.U_m + self.b_m
@@ -156,27 +163,43 @@ class mGRU(torch.nn.Module):
         h_t = (1 - z_t) * h_prev + z_t * h_tilda_t
         return h_t
 
+def plot_loss(losses, title, path):
+    plt.plot(losses)
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title(title)
+    plt.savefig(path)
+    plt.close()
 
 class RNN(torch.nn.Module):
     """RNN network
     """
-    def __init__(self, input_size, hidden_size, model_choice='rnn'):
+    def __init__(self, vocab_size, embedding_size, hidden_size, 
+                 device, model_choice='rnn'):
         super(RNN, self).__init__()
+
+        self.device = device
+
+        self.embedding_layer = nn.Embedding(vocab_size, 
+                                            embedding_size).to(device)
+
         self.hidden_size = hidden_size
         if model_choice == 'gru':
-            self.cell = GRUCell(input_size, hidden_size)
+            self.cell = GRUCell(embedding_size, hidden_size, device)
         elif model_choice == 'lstm':
-            self.cell = LSTMCell(input_size, hidden_size)
+            self.cell = LSTMCell(embedding_size, hidden_size, device)
         elif model_choice == 'mlstm':
-            self.cell = mLSTMCell(input_size, hidden_size)
+            self.cell = mLSTMCell(embedding_size, hidden_size, device)
         elif model_choice == 'mgru':
-            self.cell = mGRU(input_size, hidden_size)
+            self.cell = mGRU(embedding_size, hidden_size, device)
         else:
-            self.cell = RNNCell(input_size, hidden_size)
+            self.cell = RNNCell(embedding_size, hidden_size, device)
         
         # output dimension of W_out should be equal to input size for copy task
-        self.W_out = torch.nn.Parameter(torch.randn(hidden_size, input_size))
-        self.b_out = torch.nn.Parameter(torch.zeros(input_size))
+        self.W_out = torch.nn.Parameter(torch.randn(hidden_size, vocab_size)).to(device)
+        self.b_out = torch.nn.Parameter(torch.zeros(vocab_size)).to(device)
+        self.cell.to(device)
+        self.to(device)
 
     def forward(self, X):
         """forward pass through the RNN
@@ -185,7 +208,7 @@ class RNN(torch.nn.Module):
             X (float): [batch_size, seq_len, input_size]
             cell_choice (str): rnn/gru
         """
-        batch_size, seq_len, _ = X.shape
+        batch_size, seq_len = X.shape
         # initial hidden state
         h = torch.zeros(batch_size, self.hidden_size, device=X.device)
         cell_state = None
@@ -193,7 +216,8 @@ class RNN(torch.nn.Module):
             cell_state = torch.zeros(batch_size, self.hidden_size, device=X.device)
         outputs = []
         for t in range(seq_len):
-            x_t = X[:, t, :]    # [batch_size, input_size]
+            x_t = X[:, t]    # [batch_size, input_size]
+            x_t = self.embedding_layer(x_t)
             if cell_state is not None:
                 h, cell_state = self.cell(x_t, h, cell_state)   # [batch_size, hidden_size]
             else:
@@ -252,6 +276,7 @@ if __name__ == '__main__':
     output_len = [50, 100, 200] # how many time steps to predict
     batch_size = 32
     input_size = len(vocabulary)
+    embedding_size = 8
     hidden_size = 128
     n_epochs = 10
     lr = 0.01
@@ -260,47 +285,56 @@ if __name__ == '__main__':
 
     np.random.seed(42)
 
+    train_size = seq_length[0]
+    test_size = seq_length[2]
+    train_output_len = output_len[0]
+    test_output_len = output_len[2]
+
     # Generate train samples for copy task
     X_train = []
     Y_train = []
     tqdm.write(f"Generating {train_samples} train samples...")
     for index in tqdm(range(train_samples)):
-        input, output = generate_sequences(seq_length[0], padding=padding[0], vocabulary=idx_vocab, delimiter=char2idx[delimiter], unknown=char2idx[unknown], output_len=output_len[0])
+        input, output = generate_sequences(train_size, padding=padding[0], vocabulary=idx_vocab, delimiter=char2idx[delimiter], unknown=char2idx[unknown], output_len=train_output_len)
         X_train.append(input)
         Y_train.append(output)
     X_train = np.array(X_train)
     Y_train = np.array(Y_train)
-    pkl.dump((X_train, Y_train), open('copyTask_data_N10000_T100_P10_O50.pkl', 'wb'))
+    pkl.dump((X_train, Y_train), open(f'copyTask_data_N{train_samples}_T{seq_length[0]}_P{padding[0]}_O{train_output_len}.pkl', 'wb'))
 
     # Generate test samples for copy task
     X_test = []
     Y_test = []
     tqdm.write(f"Generating {test_samples} test samples...")
     for index in tqdm(range(test_samples)):
-        input, output = generate_sequences(seq_length[2], padding=padding[2], vocabulary=idx_vocab, delimiter=char2idx[delimiter], unknown=char2idx[unknown], output_len=output_len[1])
+        input, output = generate_sequences(test_size, padding=padding[2], vocabulary=idx_vocab, delimiter=char2idx[delimiter], unknown=char2idx[unknown], output_len=test_output_len)
         X_test.append(input)
         Y_test.append(output)
     X_test = np.array(X_test)
     Y_test = np.array(Y_test)
-    pkl.dump((X_test, Y_test), open('copyTask_data_N10000_T500_P50_O100.pkl', 'wb'))
+    pkl.dump((X_test, Y_test), open(f'copyTask_data_N{train_samples}_T{seq_length[0]}_P{padding[0]}_O{test_output_len}.pkl', 'wb'))
 
     # (X_train, Y_train) = pkl.load(open('copyTask_data_N10000_T100_P10_O50.pkl', 'rb'))
     print(f"Loaded train data with shape: {X_train.shape}, {Y_train.shape}")
     # (X_test, Y_test) = pkl.load(open('copyTask_data_N10000_T500_P50_O100.pkl', 'rb'))
     print(f"Loaded test data with shape: {X_test.shape}, {Y_test.shape}")
     
-
     # Model
-    model = RNN(input_size, hidden_size, 'gru').to(device)
+    model = RNN(len(vocabulary), embedding_size, 
+                hidden_size, device,  'gru')
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = torch.nn.MSELoss()
 
-    embedding_layer = torch.nn.Embedding(num_embeddings=len(idx_vocab)+2, 
-                                        embedding_dim=input_size).to(device)
-
-    train_losses = []
-    start_time = time.time()
+    logger.info(f"Vocabulary: {vocabulary}")
+    logger.info(f"Unknown: {unknown}, Delimiter: {delimiter}")
+    logger.info(f"sequence length: {seq_length[0]}, padding: {padding[0]}, output length: {output_len[0]}")
+    logger.info(f"batch size: {batch_size}, input size: {input_size}, embedding size: {embedding_size}, hidden size: {hidden_size}")
+    logger.info(f"epochs: {n_epochs}, lr: {lr}")
+    logger.info(f"train samples: {train_samples}, test samples: {test_samples}")
     
+    train_losses = []
+    train_accuracies = []
+    start_time = time.time()
     for epoch in range(n_epochs):
         train_loss = 0.0
         train_accuracy = 0.0
@@ -308,31 +342,34 @@ if __name__ == '__main__':
         # shuffle training data
         train_indices = torch.randperm(train_samples)
         tqdm.write("Training batches...")
-        for index in range(0, train_samples, batch_size):
+        for index in tqdm(range(0, train_samples, batch_size)):
             batch_indices = train_indices[index:index+batch_size]
-            batchX = X_train[batch_indices]
-            batchY = Y_train[batch_indices]
+            batchX = torch.tensor(X_train[batch_indices]).to(device=device)
+            batchY = torch.tensor(Y_train[batch_indices]).to(device=device)
             current_batch_size = len(batch_indices)
-            X_embeddings = embedding_layer(torch.tensor(batchX,
-                                                        dtype=torch.int32).to(device=device))
-            Y_embeddings = embedding_layer(torch.tensor(batchY,
-                                                        dtype=torch.int32).to(device=device))
-            # print(f'X_embeddings: {X_embeddings.shape}, Y_embeddings: {Y_embeddings.shape}')
+            
+            Y_one_hot = F.one_hot(batchY, input_size).float()
             optimizer.zero_grad()
-            output = model(X_embeddings) # [batch_size, seq_length, input_size]
-            # print(f"output: {output.shape}")
-            loss = criterion(output, Y_embeddings)
+            output = model(batchX) # [batch_size, seq_length, input_size]
+            loss = criterion(output, Y_one_hot)
             loss.backward()
             optimizer.step()
             train_loss += loss.item() * current_batch_size
-
+            
+            output = output[:, -train_output_len:, :]
+            Y_one_hot = Y_one_hot[:, -train_output_len:, :]
             # predictions = [Batch, Time, Output]
-            accuracy = (torch.argmax(output, dim=-1) == torch.argmax(Y_embeddings, dim=-1)).sum().item()
+            train_accuracy += (torch.argmax(output, dim=-1) == torch.argmax(Y_one_hot, dim=-1)).sum().item()
         train_loss /= train_samples
+        train_losses.append(train_loss)
         train_accuracy /= train_samples
-        print(f"Epoch {epoch} | Loss torch: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}")
-    print(f"train time: {time.time()-start_time}")
+        train_accuracies.append(train_accuracy)
+        # print(f"Epoch {epoch} | Training, Loss: {train_loss:.4f}, Accuracy: {train_accuracy:.4f}")
 
+        # Log train metrics
+        logger.info(f"Epoch {epoch} | Loss torch: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}")
+    # print(f"train time: {time.time()-start_time}")
+    logger.info(f"train time: {time.time()-start_time}")
     
     # Test the model
     tqdm.write("Testing model...")
@@ -340,35 +377,37 @@ if __name__ == '__main__':
     test_accuracy = 0.0
     start_time = time.time()
     for index in range(0, test_samples, batch_size):
-        batchX = X_test[index:index+batch_size]
-        batchY = Y_test[index:index+batch_size]
-        X_embeddings = embedding_layer(torch.tensor(batchX,
-                                                    dtype=torch.int32).to(device=device))
-        Y_embeddings = embedding_layer(torch.tensor(batchY,
-                                                    dtype=torch.int32).to(device=device))
-        
+        batchX = torch.tensor(X_test[index:index+batch_size]).to(device=device)
+        batchY = torch.tensor(Y_test[index:index+batch_size]).to(device=device)
+        current_batch_size = len(batchX)
+
         # If test data has more time steps than train data
         # Then we split the test data into multiple folds 
         # of the same size as the train data
-        predictions = torch.zeros_like(Y_embeddings)
-        if X_embeddings.shape[1] > X_train.shape[1]:
-            folds = X_train.shape[1] // X_embeddings.shape[1]
+        Y_one_hot = F.one_hot(torch.tensor(batchY), input_size).float()
+        predictions = torch.zeros_like(Y_one_hot)
+        if test_size > train_size:
+            folds = test_size // train_size
             for f in range(folds):
-                X_fold = X_embeddings[:, f*X_embeddings.shape[1]:(f+1)*X_embeddings.shape[1], :]
-                # Y_fold = Y_embeddings[:, f*Y_embeddings.shape[1]:(f+1)*Y_embeddings.shape[1], :]
+                X_fold = batchX[:, f*train_size:(f+1)*train_size, :]
+                Y_fold = batchY[:, f*train_size:(f+1)*train_size, :]
                 output = model(X_fold) # [batch_size, seq_length, input_size]
-                predictions[:, f*X_embeddings.shape[1]:(f+1)*X_embeddings.shape[1], :] = output
-            loss = criterion(predictions, Y_embeddings)
-            accuracy = (torch.argmax(output, dim=-1) == torch.argmax(Y_embeddings, dim=-1)).sum().item()
+                predictions[:, f*train_size:(f+1)*train_size, :] = output
+            loss = criterion(predictions, Y_one_hot)
+            predictions = predictions[:, -test_output_len:, :]
+            Y_one_hot = Y_one_hot[:, -test_output_len:, :]
+            accuracy = (torch.argmax(output, dim=-1) == torch.argmax(Y_one_hot, dim=-1)).sum().item()
             test_loss += loss.item() * current_batch_size
             test_accuracy += accuracy
     test_loss /= test_samples
     test_accuracy /= test_samples
-    print(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}")
-    print(f"test time: {time.time()-start_time}")
-    
+    # print(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}")
+    logger.info(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}")
+    # print(f"test time: {time.time()-start_time}")
+    logger.info(f"test time: {time.time()-start_time}")
 
-
+    # Save model
+    torch.save(model, 'rnn.pth')
 
     # Questions:
     '''

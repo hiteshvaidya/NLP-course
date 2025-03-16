@@ -21,9 +21,9 @@ def generate_sequences(seq_length, padding, vocabulary,
 if __name__ == "__main__":
     seq_length = [100, 200, 500, 1000]
     vocabulary = ['a','x','c','r','y','w','b','t','o']
-    delimiter = '$'
-    unknown = ' '
-    vocabulary.extend([delimiter, unknown])
+    delimiter = '<DELIM>'
+    pad = '<PAD>'
+    vocabulary.extend([delimiter, pad])
     print(f"vocabulary: {vocabulary}")
     
     char2idx = {char: idx for idx, char in enumerate(vocabulary)}
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     idx_vocab = [char2idx[char] for char in vocabulary]
     print(f"idx_vocab: {idx_vocab}")
     idx_vocab.remove(char2idx[delimiter])
-    idx_vocab.remove(char2idx[unknown])
+    idx_vocab.remove(char2idx[pad])
 
     padding = [10, 20, 50]  # repeat delimiter for how many time steps
     output_len = [50, 100, 200] # how many time steps to predict
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     Y_train = []
     tqdm.write(f"Generating {n_samples} train samples...")
     for index in tqdm(range(n_samples)):
-        input, output = generate_sequences(seq_length[0], padding=padding[0], vocabulary=idx_vocab, delimiter=char2idx[delimiter], unknown=char2idx[unknown], output_len=output_len[0])
+        input, output = generate_sequences(seq_length[0], padding=padding[0], vocabulary=idx_vocab, delimiter=char2idx[delimiter], unknown=char2idx[pad], output_len=output_len[0])
         X_train.append(input)
         Y_train.append(output)
     X_train = np.array(X_train)
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     Y_train = []
     tqdm.write(f"Generating {n_samples} test samples...")
     for index in tqdm(range(n_samples)):
-        input, output = generate_sequences(seq_length[2], padding=padding[2], vocabulary=idx_vocab, delimiter=char2idx[delimiter], unknown=char2idx[unknown], output_len=output_len[1])
+        input, output = generate_sequences(seq_length[2], padding=padding[2], vocabulary=idx_vocab, delimiter=char2idx[delimiter], unknown=char2idx[pad], output_len=output_len[1])
         X_train.append(input)
         Y_train.append(output)
     X_train = np.array(X_train)
