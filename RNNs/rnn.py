@@ -195,9 +195,11 @@ class RNN(torch.nn.Module):
             self.cell = RNNCell(embedding_size, hidden_size, device)
         
         # output dimension of W_out should be equal to input size for copy task
-        self.W_out = torch.nn.Parameter(torch.randn(hidden_size, vocab_size)).to(device)
-        self.b_out = torch.nn.Parameter(torch.zeros(vocab_size)).to(device)
-        self.cell.to(device)
+        # self.W_out = torch.nn.Parameter(torch.randn(hidden_size, vocab_size)).to(device)
+        # self.b_out = torch.nn.Parameter(torch.zeros(vocab_size)).to(device)
+        self.out_layer = nn.Linear(hidden_size, vocab_size)
+        self.softmax = nn.Softmax(dim=1)
+        # self.cell.to(device)
         self.to(device)
 
     def forward(self, X):
@@ -223,13 +225,16 @@ class RNN(torch.nn.Module):
                 h = self.cell(x_t, h)
             
             # Project hidden -> input_size
-            out_t = h @ self.W_out + self.b_out
-            outputs.append(out_t.unsqueeze(1))  # shape [batch_size, 1, input_size]
+            # out_t = h @ self.W_out + self.b_out
+            logits = self.out_layer(h)
+            # output = self.softmax(output)
+            outputs.append(logits.unsqueeze(1))  # shape [batch_size, 1, input_size]
         # concatenate across time
         # if cell_state is not None:
         #     return torch.cat(outputs, dim=1), cell_state    # [batch_size, seq_length, input_size]
         # else:
-        return torch.cat(outputs, dim=1)
+        outputs = torch.cat(outputs, dim=1)
+        return outputs
     
 def generate_sequences(seq_length, padding, vocabulary, 
                        delimiter, unknown, output_len):
@@ -359,7 +364,7 @@ if __name__ == '__main__':
     model = RNN(len(vocabulary), embedding_size, 
                 hidden_size, device, args.cell)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    criterion = torch.nn.MSELoss()
+    criterion = nn.CrossEntropyLoss()
 
     logger.info(f"Vocabulary: {vocabulary}")
     logger.info(f"Unknown: {unknown}, Delimiter: {delimiter}")
