@@ -9,6 +9,7 @@ import logging
 import matplotlib.pyplot as plt
 import torch.nn.functional as F
 import argparse
+import os
 
 class RNNCell(torch.nn.Module):
     """A single step RNN in pytorch
@@ -24,8 +25,10 @@ class RNNCell(torch.nn.Module):
         """
         super(RNNCell, self).__init__()
         self.hidden_size = hidden_size
-        self.W_x = torch.nn.Parameter(torch.randn(input_size, hidden_size) * 0.01)
-        self.W_h = torch.nn.Parameter(torch.randn(hidden_size, hidden_size) * 0.01)
+        self.W_x = torch.nn.Parameter(torch.randn(input_size,
+                                                  hidden_size) * 0.1)
+        self.W_h = torch.nn.Parameter(torch.randn(hidden_size,
+                                                  hidden_size) * 0.1)
         self.b_h = torch.nn.Parameter(torch.zeros(hidden_size))
 
     def forward(self, x_t, h_prev):
@@ -50,17 +53,17 @@ class GRUCell(torch.nn.Module):
         super(GRUCell, self).__init__()
         self.hidden_size = hidden_size
         self.W_z = torch.nn.Parameter(torch.randn(input_size, 
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.W_r = torch.nn.Parameter(torch.randn(input_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.W_h = torch.nn.Parameter(torch.randn(input_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.U_z = torch.nn.Parameter(torch.randn(hidden_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.U_r = torch.nn.Parameter(torch.randn(hidden_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.U_h = torch.nn.Parameter(torch.randn(hidden_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.b_z = torch.nn.Parameter(torch.zeros(hidden_size))
         self.b_r = torch.nn.Parameter(torch.zeros(hidden_size))
         self.b_h = torch.nn.Parameter(torch.zeros(hidden_size))
@@ -84,21 +87,21 @@ class LSTMCell(torch.nn.Module):
         super(LSTMCell, self).__init__()
         self.hidden_size = hidden_size
         self.W_f = torch.nn.Parameter(torch.randn(input_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.W_i = torch.nn.Parameter(torch.randn(input_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.W_c = torch.nn.Parameter(torch.randn(input_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.W_o = torch.nn.Parameter(torch.randn(input_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.U_f = torch.nn.Parameter(torch.randn(hidden_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.U_i = torch.nn.Parameter(torch.randn(hidden_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.U_c = torch.nn.Parameter(torch.randn(hidden_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.U_o = torch.nn.Parameter(torch.randn(hidden_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.b_f = torch.nn.Parameter(torch.zeros(hidden_size))
         self.b_i = torch.nn.Parameter(torch.zeros(hidden_size))
         self.b_c = torch.nn.Parameter(torch.zeros(hidden_size))
@@ -118,25 +121,25 @@ class mLSTMCell(torch.nn.Module):
         super(mLSTMCell, self).__init__()
         self.hidden_size = hidden_size
         self.W_i = torch.nn.Parameter(torch.randn(input_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.W_m = torch.nn.Parameter(torch.randn(input_size,
-                                                  input_size) * 0.01)
+                                                  input_size) * 0.1)
         self.U_i = torch.nn.Parameter(torch.randn(hidden_size, 
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.U_m = torch.nn.Parameter(torch.randn(hidden_size,
-                                                  input_size) * 0.01)
+                                                  input_size) * 0.1)
         self.W_f = torch.nn.Parameter(torch.randn(input_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.U_f = torch.nn.Parameter(torch.randn(hidden_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.W_o = torch.nn.Parameter(torch.randn(input_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.U_o = torch.nn.Parameter(torch.randn(hidden_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.W_c = torch.nn.Parameter(torch.randn(input_size, 
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.U_c = torch.nn.Parameter(torch.randn(hidden_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
 
         self.b_m = torch.nn.Parameter(torch.zeros(input_size))
         self.b_i = torch.nn.Parameter(torch.zeros(hidden_size))
@@ -163,21 +166,21 @@ class mGRU(torch.nn.Module):
         super(mGRU, self).__init__()
         self.hidden_size = hidden_size
         self.W_m = torch.nn.Parameter(torch.randn(input_size,
-                                                  input_size) * 0.01)
+                                                  input_size) * 0.1)
         self.W_z = torch.nn.Parameter(torch.randn(input_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.W_r = torch.nn.Parameter(torch.randn(input_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.W_h = torch.nn.Parameter(torch.randn(input_size,
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.U_m = torch.nn.Parameter(torch.randn(hidden_size, 
-                                                  input_size) * 0.01)
+                                                  input_size) * 0.1)
         self.U_z = torch.nn.Parameter(torch.randn(hidden_size, 
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.U_r = torch.nn.Parameter(torch.randn(hidden_size, 
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         self.U_h = torch.nn.Parameter(torch.randn(hidden_size, 
-                                                  hidden_size) * 0.01)
+                                                  hidden_size) * 0.1)
         
         self.b_m = torch.nn.Parameter(torch.zeros(input_size))
         self.b_z = torch.nn.Parameter(torch.zeros(hidden_size))
@@ -330,7 +333,7 @@ if __name__ == '__main__':
                         help='rnn/gru/lstm/mgru/mlstm')
     parser.add_argument('-ep', '--epochs', type=int, default=10, 
                         help='epochs')
-    parser.add_argument('-lr', '--learning_rate', type=float, default=0.01, 
+    parser.add_argument('-lr', '--learning_rate', type=float, default=0.1, 
                         help='learning rate')
     parser.add_argument('-s', '--seed', type=int, default=42, 
                         help='seed')
@@ -340,8 +343,12 @@ if __name__ == '__main__':
                         help='test samples')
     args = parser.parse_args()
 
+    if not os.path.exists('logs'): os.makedirs('logs')
+    log_dir = os.path.join("logs", args.log)
+    os.makedirs(log_dir)
+
     # Configure the logger
-    logger.add(args.log, format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}", level="INFO")
+    logger.add(os.path.join(log_dir, 'logs.log'), format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}", level="INFO")
 
     # if torch.cuda.is_available():
     #     device = torch.device("cuda")
@@ -486,6 +493,9 @@ if __name__ == '__main__':
     # print(f"train time: {time.time()-start_time}")
     logger.info(f"train time: {time.time()-start_time}")
     
+    plot_loss(train_losses, "Training Loss", os.path.join(log_dir, "train_loss.png"))
+    plot_loss(train_accuracies, "Training Accuracy", os.path.join(log_dir, "train_accuracy.png"))
+
     # Test the model
     tqdm.write("Testing model...")
     test_loss = 0.0
@@ -543,7 +553,7 @@ if __name__ == '__main__':
     logger.info(f"test time: {time.time()-start_time}")
 
     # Save model
-    torch.save(model, 'rnn.pth')
+    torch.save(model, os.path.join(log_dir, 'model.pth') )
 
     # Questions:
     '''
