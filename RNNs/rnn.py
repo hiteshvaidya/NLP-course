@@ -5,11 +5,10 @@ import time
 import pickle as pkl
 from tqdm import tqdm
 from loguru import logger
+import logging
 import matplotlib.pyplot as plt
 import torch.nn.functional as F
-
-# Configure the logger
-logger.add("rnn.log", format="{time} {level} {message}", level="INFO")
+import argparse
 
 class RNNCell(torch.nn.Module):
     """A single step RNN in pytorch
@@ -75,7 +74,7 @@ class GRUCell(torch.nn.Module):
         return h_t
 
 class LSTMCell(torch.nn.Module):
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_size, hidden_size, device):
         super(LSTMCell, self).__init__()
         self.hidden_size = hidden_size
         self.W_f = torch.nn.Parameter(torch.randn(input_size, hidden_size)).to(device)
@@ -250,15 +249,53 @@ def generate_sequences(seq_length, padding, vocabulary,
     
 if __name__ == '__main__':
 
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-    elif torch.backends.mps.is_available():
-        device = torch.device("mps")
-    else:
-        device = torch.device("cpu")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--device', type=str, default='cpu',
+                        help='mps, cuda, cpu')
+    parser.add_argument('-l', '--log', type=str, default='rnn.log', 
+                        help='filename.log')
+    parser.add_argument('-iseq', '--train_seq_len', type=int, default=100, 
+                        help='sequence length of train set')
+    parser.add_argument('-tseq', '--test_seq_len', type=int, default=100, 
+                        help='sequence length of test set')
+    parser.add_argument('-p', '--padding', type=int, default=10, 
+                        help='padding')
+    parser.add_argument('-oseq', '--train_output_len', type=int, default=50, 
+                        help='output length')
+    parser.add_argument('-toseq', '--test_output_len', type=int, default=50, 
+                        help='output length')
+    parser.add_argument('-b', '--batch_size', type=int, default=32, 
+                        help='batch size')
+    parser.add_argument('-em', '--embedding_size', type=int, default=11, 
+                        help='embedding size')
+    parser.add_argument('-hs', '--hidden_size', type=int, default=128, 
+                        help='hidden size')
+    parser.add_argument('-c', '--cell', type=str, default='rnn', 
+                        help='rnn/gru/lstm/mgru/mlstm')
+    parser.add_argument('-ep', '--epochs', type=int, default=10, 
+                        help='epochs')
+    parser.add_argument('-lr', '--learning_rate', type=float, default=0.01, 
+                        help='learning rate')
+    parser.add_argument('-s', '--seed', type=int, default=42, 
+                        help='seed')
+    parser.add_argument('-trs', '--train_samples', type=int, default=10000, 
+                        help='train samples')
+    parser.add_argument('-ts', '--test_samples', type=int, default=1000, 
+                        help='test samples')
+    args = parser.parse_args()
 
+    # Configure the logger
+    logger.add(args.log, format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}", level="INFO")
 
-    seq_length = [100, 200, 500, 1000]
+    # if torch.cuda.is_available():
+    #     device = torch.device("cuda")
+    # elif torch.backends.mps.is_available():
+    #     device = torch.device("mps")
+    # else:
+    #     device = torch.device("cpu")
+    device = torch.device(args.device)
+    logger.info(f"Using device: {device}")
+
     vocabulary = ['a','x','c','r','y','w','b','t','o']
     delimiter = '$'
     unknown = ' '
@@ -272,62 +309,61 @@ if __name__ == '__main__':
     idx_vocab.remove(char2idx[delimiter])
     idx_vocab.remove(char2idx[unknown])
 
-    padding = [10, 20, 50]  # repeat delimiter for how many time steps
-    output_len = [50, 100, 200] # how many time steps to predict
-    batch_size = 32
+    padding = args.padding  # repeat delimiter for how many time steps
+    batch_size = args.batch_size
     input_size = len(vocabulary)
-    embedding_size = 8
-    hidden_size = 128
-    n_epochs = 10
-    lr = 0.01
-    train_samples = 10000
-    test_samples = 10000
+    embedding_size = args.embedding_size
+    hidden_size = args.hidden_size
+    n_epochs = args.epochs
+    lr = args.learning_rate
+    train_samples = args.train_samples
+    test_samples = args.test_samples
 
-    np.random.seed(42)
+    np.random.seed(args.seed)
 
-    train_size = seq_length[0]
-    test_size = seq_length[2]
-    train_output_len = output_len[0]
-    test_output_len = output_len[2]
+    train_size = args.train_seq_len
+    test_size = args.test_seq_len
+    train_output_len = args.train_output_len
+    test_output_len = args.test_output_len
 
     # Generate train samples for copy task
     X_train = []
     Y_train = []
     tqdm.write(f"Generating {train_samples} train samples...")
     for index in tqdm(range(train_samples)):
-        input, output = generate_sequences(train_size, padding=padding[0], vocabulary=idx_vocab, delimiter=char2idx[delimiter], unknown=char2idx[unknown], output_len=train_output_len)
+        input, output = generate_sequences(train_size, padding=padding, vocabulary=idx_vocab, delimiter=char2idx[delimiter], unknown=char2idx[unknown], output_len=train_output_len)
         X_train.append(input)
         Y_train.append(output)
     X_train = np.array(X_train)
     Y_train = np.array(Y_train)
-    pkl.dump((X_train, Y_train), open(f'copyTask_data_N{train_samples}_T{seq_length[0]}_P{padding[0]}_O{train_output_len}.pkl', 'wb'))
+    # pkl.dump((X_train, Y_train), open(f'copyTask_data_N{train_samples}_T{seq_length[0]}_P{padding[0]}_O{train_output_len}.pkl', 'wb'))
 
     # Generate test samples for copy task
     X_test = []
     Y_test = []
     tqdm.write(f"Generating {test_samples} test samples...")
     for index in tqdm(range(test_samples)):
-        input, output = generate_sequences(test_size, padding=padding[2], vocabulary=idx_vocab, delimiter=char2idx[delimiter], unknown=char2idx[unknown], output_len=test_output_len)
+        input, output = generate_sequences(test_size, padding=padding, vocabulary=idx_vocab, delimiter=char2idx[delimiter], unknown=char2idx[unknown], output_len=test_output_len)
         X_test.append(input)
         Y_test.append(output)
     X_test = np.array(X_test)
     Y_test = np.array(Y_test)
-    pkl.dump((X_test, Y_test), open(f'copyTask_data_N{train_samples}_T{seq_length[0]}_P{padding[0]}_O{test_output_len}.pkl', 'wb'))
+    # pkl.dump((X_test, Y_test), open(f'copyTask_data_N{train_samples}_T{seq_length[0]}_P{padding[0]}_O{test_output_len}.pkl', 'wb'))
 
     # (X_train, Y_train) = pkl.load(open('copyTask_data_N10000_T100_P10_O50.pkl', 'rb'))
-    print(f"Loaded train data with shape: {X_train.shape}, {Y_train.shape}")
+    logger.info(f"Loaded train data with shape: {X_train.shape}, {Y_train.shape}")
     # (X_test, Y_test) = pkl.load(open('copyTask_data_N10000_T500_P50_O100.pkl', 'rb'))
-    print(f"Loaded test data with shape: {X_test.shape}, {Y_test.shape}")
+    logger.info(f"Loaded test data with shape: {X_test.shape}, {Y_test.shape}")
     
     # Model
     model = RNN(len(vocabulary), embedding_size, 
-                hidden_size, device,  'gru')
+                hidden_size, device, args.cell)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = torch.nn.MSELoss()
 
     logger.info(f"Vocabulary: {vocabulary}")
     logger.info(f"Unknown: {unknown}, Delimiter: {delimiter}")
-    logger.info(f"sequence length: {seq_length[0]}, padding: {padding[0]}, output length: {output_len[0]}")
+    logger.info(f"sequence length: {train_size}, padding: {padding}, output length: {train_output_len}")
     logger.info(f"batch size: {batch_size}, input size: {input_size}, embedding size: {embedding_size}, hidden size: {hidden_size}")
     logger.info(f"epochs: {n_epochs}, lr: {lr}")
     logger.info(f"train samples: {train_samples}, test samples: {test_samples}")
@@ -384,7 +420,7 @@ if __name__ == '__main__':
         # If test data has more time steps than train data
         # Then we split the test data into multiple folds 
         # of the same size as the train data
-        Y_one_hot = F.one_hot(torch.tensor(batchY), input_size).float()
+        Y_one_hot = F.one_hot(batchY, input_size).float()
         predictions = torch.zeros_like(Y_one_hot)
         if test_size > train_size:
             folds = test_size // train_size

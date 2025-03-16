@@ -1,0 +1,1 @@
+python rnn.py -d mps -l lstm_100.log -iseq 100 -tseq 500 -p 3 -oseq 50 -toseq 50 -b 32 -em 16 -hs 64 -c lstm -ep 10 -lr 0.01 -s 42 -trs 10000 -ts 1000
