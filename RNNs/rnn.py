@@ -84,6 +84,12 @@ class GRUCell(torch.nn.Module):
 
 class LSTMCell(torch.nn.Module):
     def __init__(self, input_size, hidden_size):
+        """Initialize an LSTM cell
+
+        Args:
+            input_size (int): The input size (number of features)
+            hidden_size (int): The hidden state size (number of features)
+        """
         super(LSTMCell, self).__init__()
         self.hidden_size = hidden_size
         self.W_f = torch.nn.Parameter(torch.randn(input_size,
@@ -108,6 +114,17 @@ class LSTMCell(torch.nn.Module):
         self.b_o = torch.nn.Parameter(torch.zeros(hidden_size))
 
     def forward(self, x_t, h_prev, c_prev):
+        """Forward pass through an LSTM cell.
+
+        Args:
+            x_t (float): [batch_size, input_size]
+            h_prev (float): [batch_size, hidden_size]
+            c_prev (float): [batch_size, hidden_size]
+
+        Returns:
+            h_t (float): [batch_size, hidden_size]
+            c_t (float): [batch_size, hidden_size]
+        """
         f_t = torch.sigmoid(x_t @ self.W_f + h_prev @ self.U_f + self.b_f)
         i_t = torch.sigmoid(x_t @ self.W_i + h_prev @ self.U_i + self.b_i)
         c_tilda_t = torch.tanh(x_t @ self.W_c + h_prev @ self.U_c + self.b_c)
@@ -118,6 +135,31 @@ class LSTMCell(torch.nn.Module):
     
 class mLSTMCell(torch.nn.Module):
     def __init__(self, input_size, hidden_size):
+        """
+        Initialize an mLSTM cell.
+
+        Args:
+            input_size (int): The size of the input features.
+            hidden_size (int): The size of the hidden state.
+
+        Attributes:
+            W_i (torch.nn.Parameter): Weight matrix for the input gate.
+            W_m (torch.nn.Parameter): Weight matrix for modifying the input.
+            U_i (torch.nn.Parameter): Recurrent weight matrix for the input gate.
+            U_m (torch.nn.Parameter): Recurrent weight matrix for modifying the input.
+            W_f (torch.nn.Parameter): Weight matrix for the forget gate.
+            U_f (torch.nn.Parameter): Recurrent weight matrix for the forget gate.
+            W_o (torch.nn.Parameter): Weight matrix for the output gate.
+            U_o (torch.nn.Parameter): Recurrent weight matrix for the output gate.
+            W_c (torch.nn.Parameter): Weight matrix for the cell gate.
+            U_c (torch.nn.Parameter): Recurrent weight matrix for the cell gate.
+            b_m (torch.nn.Parameter): Bias for modifying the input.
+            b_i (torch.nn.Parameter): Bias for the input gate.
+            b_o (torch.nn.Parameter): Bias for the output gate.
+            b_f (torch.nn.Parameter): Bias for the forget gate.
+            b_c (torch.nn.Parameter): Bias for the cell gate.
+        """
+
         super(mLSTMCell, self).__init__()
         self.hidden_size = hidden_size
         self.W_i = torch.nn.Parameter(torch.randn(input_size,
@@ -148,6 +190,19 @@ class mLSTMCell(torch.nn.Module):
         self.b_c = torch.nn.Parameter(torch.zeros(hidden_size))
 
     def forward(self, x_t, h_prev, c_prev):
+        """
+        Forward pass through an mLSTM cell.
+
+        Args:
+            x_t (torch.Tensor): The input tensor at time t with shape [batch_size, input_size].
+            h_prev (torch.Tensor): The previous hidden state tensor with shape [batch_size, hidden_size].
+            c_prev (torch.Tensor): The previous cell state tensor with shape [batch_size, hidden_size].
+
+        Returns:
+            h_t (torch.Tensor): The next hidden state tensor with shape [batch_size, hidden_size].
+            c_t (torch.Tensor): The next cell state tensor with shape [batch_size, hidden_size].
+        """
+
         m_t = x_t @ self.W_m + h_prev @ self.U_m + self.b_m
         x_tilde_t = m_t * x_t
         i_t = torch.sigmoid(x_tilde_t @ self.W_i + h_prev @ self.U_i + self.b_i)
@@ -163,6 +218,19 @@ class mGRU(torch.nn.Module):
     source: https://arxiv.org/pdf/1907.00455
     """
     def __init__(self, input_size, hidden_size):
+        """
+        Initialize an mGRU cell.
+
+        Args:
+            input_size (int): The size of the input feature vector.
+            hidden_size (int): The size of the hidden state vector.
+
+        This initialization sets up the parameters for the mGRU cell, including the weight matrices
+        (W_m, W_z, W_r, W_h, U_m, U_z, U_r, U_h) and bias vectors (b_m, b_z, b_r, b_h). The weight
+        matrices are initialized with random values scaled by 0.1, and the bias vectors are initialized
+        to zeros.
+        """
+
         super(mGRU, self).__init__()
         self.hidden_size = hidden_size
         self.W_m = torch.nn.Parameter(torch.randn(input_size,
@@ -188,6 +256,16 @@ class mGRU(torch.nn.Module):
         self.b_h = torch.nn.Parameter(torch.zeros(hidden_size))
 
     def forward(self, x_t, h_prev):
+        """
+        Compute the next hidden state given the current input and previous hidden state.
+
+        Args:
+            x_t (torch.Tensor): The input tensor at time t with shape [batch_size, input_size].
+            h_prev (torch.Tensor): The previous hidden state tensor with shape [batch_size, hidden_size].
+
+        Returns:
+            h_t (torch.Tensor): The next hidden state tensor with shape [batch_size, hidden_size].
+        """
         m_t = x_t @ self.W_m + h_prev @ self.U_m + self.b_m
         x_tilde_t = m_t * x_t
         z_t = torch.sigmoid(x_tilde_t @ self.W_z + h_prev @ self.U_z + self.b_z)
@@ -196,19 +274,36 @@ class mGRU(torch.nn.Module):
         h_t = (1 - z_t) * h_prev + z_t * h_tilde_t
         return h_t
 
-def plot_loss(losses, title, path):
-    plt.plot(losses)
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.title(title)
-    plt.savefig(path)
-    plt.close()
-
 class RNN(torch.nn.Module):
     """RNN network
     """
     def __init__(self, vocab_size, embedding_size, hidden_size, 
                  device, model_choice='rnn'): # 
+        """
+        Initialize the RNN model.
+
+        Args:
+            vocab_size (int): The size of the vocabulary.
+            embedding_size (int): The size of the embedding vectors.
+            hidden_size (int): The size of the hidden state vectors.
+            device (torch.device): The device on which to run the model ('cpu' or 'cuda').
+            model_choice (str, optional): The type of RNN cell to use. Defaults to 'rnn'.
+                Options include:
+                - 'rnn': Vanilla RNN cell.
+                - 'gru': GRU cell.
+                - 'lstm': LSTM cell.
+                - 'mlstm': Modified LSTM cell.
+                - 'mgru': Modified GRU cell.
+
+        Attributes:
+            device (torch.device): The device on which the model is running.
+            embedding_layer (nn.Embedding): The embedding layer for input sequences.
+            hidden_size (int): The size of the hidden state vectors.
+            cell (nn.Module): The RNN cell used for processing sequences.
+            out_layer (nn.Linear): The linear layer for projecting hidden states to vocabulary size.
+            softmax (nn.Softmax): The softmax layer for output probabilities.
+        """
+
         super(RNN, self).__init__()
 
         self.device = device
@@ -246,7 +341,7 @@ class RNN(torch.nn.Module):
     #         print(param.shape)
     #     return params
 
-    def forward(self, X):
+    def forward(self, X, h=None, cell_state=None, return_states=False):
         """forward pass through the RNN
 
         Args:
@@ -256,10 +351,15 @@ class RNN(torch.nn.Module):
         X = self.embedding_layer(X)
         batch_size, seq_len, _ = X.shape
         # initial hidden state
-        h = torch.zeros(batch_size, self.hidden_size, device=X.device)
-        cell_state = None
-        if isinstance(self.cell, LSTMCell) or isinstance(self.cell, mLSTMCell):
-            cell_state = torch.zeros(batch_size, self.hidden_size, device=X.device)
+        if h is None:
+            h = torch.zeros(batch_size, self.hidden_size, device=X.device)
+        else:
+            h = h.to(X.device)
+        if cell_state is not None:
+            cell_state = cell_state.to(X.device)
+        else:
+            if isinstance(self.cell, LSTMCell) or isinstance(self.cell, mLSTMCell):
+                cell_state = torch.zeros(batch_size, self.hidden_size, device=X.device)
         outputs = []
         for t in range(seq_len):
             x_t = X[:, t, :]    # [batch_size, input_size]
@@ -267,16 +367,6 @@ class RNN(torch.nn.Module):
                 h, cell_state = self.cell(x_t, h, cell_state)   # [batch_size, hidden_size]
             else:
                 h = self.cell(x_t, h)
-            # if cell_choice == 'gru':
-            #     h = self.gru_cell(x_t, h)
-            # elif cell_choice == 'lstm':
-            #     h, cell_state = self.lstm_cell(x_t, h, cell_state)
-            # elif cell_choice == 'mlstm':
-            #     h, cell_state = self.mlstm_cell(x_t, h, cell_state)
-            # elif cell_choice == 'mgru':
-            #     h = self.mgru_cell(x_t, h)
-            # else:
-            #     h = self.rnn_cell(x_t, h)
             
             # Project hidden -> input_size
             # out_t = h @ self.W_out + self.b_out
@@ -284,14 +374,56 @@ class RNN(torch.nn.Module):
             # output = self.softmax(output)
             outputs.append(logits.unsqueeze(1))  # shape [batch_size, 1, input_size]
         # concatenate across time
-        # if cell_state is not None:
-        #     return torch.cat(outputs, dim=1), cell_state    # [batch_size, seq_length, input_size]
-        # else:
         outputs = torch.cat(outputs, dim=1)
-        return outputs
-    
+
+        if return_states:
+            if isinstance(self.cell, LSTMCell) or isinstance(self.cell, mLSTMCell):
+                return outputs, h, cell_state
+            else:
+                return outputs, h
+        else:
+            return outputs
+
+def plot_loss(losses, title, y_label, path):
+    """
+    Plots the loss over epochs and saves the plot to a file.
+
+    Args:
+        losses (list or array-like): A list or array containing the loss values for each epoch.
+        title (str): The title for the plot.
+        path (str): The file path where the plot image will be saved.
+    """
+
+    plt.plot(losses)
+    plt.xlabel('Epochs')
+    plt.ylabel(y_label)
+    plt.title(title)
+    plt.savefig(path)
+    plt.close()
+
 def generate_sequences(seq_length, padding, vocabulary, 
                        delimiter, unknown, output_len):
+    """
+    Generate a sequence of inputs and outputs for the copy task.
+
+    The input sequence is a sequence of random elements from the vocabulary
+    of length seq_length. Then padding number of delimiters are appended to the
+    input sequence. Then unknown number of unknowns are appended to the input
+    sequence. The output sequence is the same as the input sequence except the
+    first output_padding elements are unknowns.
+
+    Args:
+        seq_length (int): The length of the sequence to generate.
+        padding (int): The number of padding elements to add to the sequence.
+        vocabulary (list): The list of elements to choose from for the sequence.
+        delimiter (int): The id of the delimiter element.
+        unknown (int): The id of the unknown element.
+        output_len (int): The length of the output sequence.
+
+    Returns:
+        tuple: A tuple of two lists. The first list is the input sequence and
+        the second list is the output sequence.
+    """
     input_seq = []
     output = []
     for index in range(seq_length):
@@ -307,7 +439,7 @@ def generate_sequences(seq_length, padding, vocabulary,
 
     
 if __name__ == '__main__':
-
+    # accept command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--device', type=str, default='cpu',
                         help='mps, cuda, cpu')
@@ -345,7 +477,7 @@ if __name__ == '__main__':
 
     if not os.path.exists('logs'): os.makedirs('logs')
     log_dir = os.path.join("logs", args.log)
-    os.makedirs(log_dir)
+    if not os.path.exists(log_dir): os.makedirs(log_dir)
 
     # Configure the logger
     logger.add(os.path.join(log_dir, 'logs.log'), format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}", level="INFO")
@@ -365,8 +497,11 @@ if __name__ == '__main__':
     vocabulary.extend([delimiter, unknown])
     print(f"vocabulary: {vocabulary}")
     
+    # lookup table to convert characters to indices
     char2idx = {char: idx for idx, char in enumerate(vocabulary)}
+    # lookup table to convert indices to characters
     idx2char = {idx: char for idx, char in enumerate(vocabulary)}
+    # convert vocabulary to indices
     idx_vocab = [char2idx[char] for char in vocabulary]
     print(f"idx_vocab: {idx_vocab}")
     idx_vocab.remove(char2idx[delimiter])
@@ -421,6 +556,11 @@ if __name__ == '__main__':
     # Model
     model = RNN(len(vocabulary), embedding_size, 
                 hidden_size, device, args.cell)
+    
+    # Load a saved model
+    model = torch.load('logs/<model_path>')
+
+    # check whether parameters of RNN as well as the required cell are obtained
     for name, param in model.named_parameters():
         print(name, param.size())
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -436,6 +576,8 @@ if __name__ == '__main__':
     train_losses = []
     train_accuracies = []
     start_time = time.time()
+
+    # Training
     for epoch in range(n_epochs):
         train_loss = 0.0
         train_accuracy = 0.0
@@ -465,6 +607,7 @@ if __name__ == '__main__':
             # Average time-step losses
             loss = torch.mean(torch.stack(time_step_losses))
             loss.backward()
+            # clip gradients
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)  # Gradient clipping
             optimizer.step()
             train_loss += loss.item() * current_batch_size
@@ -490,13 +633,14 @@ if __name__ == '__main__':
 
         # Log train metrics
         logger.info(f"Epoch {epoch} | Loss torch: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}")
-    # print(f"train time: {time.time()-start_time}")
+    
     logger.info(f"train time: {time.time()-start_time}")
     
-    plot_loss(train_losses, "Training Loss", os.path.join(log_dir, "train_loss.png"))
-    plot_loss(train_accuracies, "Training Accuracy", os.path.join(log_dir, "train_accuracy.png"))
+    plot_loss(train_losses, "Training Loss", "Loss", os.path.join(log_dir, "train_loss.png"))
+    plot_loss(train_accuracies, "Training Accuracy", "Accuracy", os.path.join(log_dir, "train_accuracy.png"))
 
     # Test the model
+    model.eval()
     tqdm.write("Testing model...")
     test_loss = 0.0
     test_accuracy = 0.0
@@ -513,11 +657,20 @@ if __name__ == '__main__':
         predictions = torch.zeros_like(Y_one_hot)
         if test_size > train_size:
             folds = test_size // train_size
-            for f in range(folds):
-                X_fold = batchX[:, f*train_size:(f+1)*train_size]
-                Y_fold = batchY[:, f*train_size:(f+1)*train_size]
-                output = model(X_fold) # [batch_size, seq_length, input_size]
-                predictions[:, f*train_size:(f+1)*train_size, :] = output
+            
+            # since input length is longer than train size, we need to preserve h and cell state (in case of lstm/mlstm)
+            h = torch.zeros(batch_size, hidden_size, device=device)
+            cell_state = torch.zeros(batch_size, hidden_size, device=device)
+            # for f in range(folds):
+            for fold in range(0, test_size, train_size):
+                X_fold = batchX[:, fold: fold+train_size]
+                # Y_fold = batchY[:, fold: fold+train_size]
+                if args.cell == "lstm" or args.cell == "mlstm":
+                    output, h, cell_state = model(X_fold, h=h, cell_state=cell_state, return_state=True) # [batch_size, seq_length, input_size]
+                else:
+                    output, h = model(X_fold, h=h, return_state=True) # [batch_size, seq_length, input_size]
+                # predictions[:, fold: fold+train_size, :] = output
+                predictions[:, fold: fold+train_size, :] = output
 
             # Calculate loss at each time step
             time_step_losses = []
@@ -554,10 +707,3 @@ if __name__ == '__main__':
 
     # Save model
     torch.save(model, os.path.join(log_dir, 'model.pth') )
-
-    # Questions:
-    '''
-    1. Does the input have to be of random length
-    2. Does padding have to be for random steps in every sample?
-    3. If input and padding length are random, do we need to make the input lengths consistent? how to make them consistent?
-    '''
