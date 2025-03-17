@@ -109,6 +109,8 @@ The [run.sh](./run.sh) specifies a list of all the run commands that I used for 
 ### Logs
 All the logs are saved as per the name provided along with `-l or --log` in the command line argument. Any experiment saves the respective model (.pth), runtime log, plots for loss and accuracy. To load a saved trained model (`.pth`), you can comment **[line 557 of rnn.py](rnn.py#L557)** and load the existing model at **[line 561](rnn.py#L561)** by providing the correct relative path.
 
+**Logs of all the experiments can be found in [logs](./logs/) folder**
+
 
 ### Model Optimization
 - The loss and accuracy is calculated at every time step between `output[:, t, :]` and `Y_one_hot[:, t, :]` and averaged over all time steps
@@ -128,3 +130,82 @@ As mentioned in the announcement for this homework, if model is trained for **K*
 - It was observed that all networks trained better with 50000 samples as opposed to just 10000 train samples. All the train samples were of length 100. The testing was performed with 10000 samples of length 500 as mentioned in the requirements of the assignment.
 
 For the final trials, the seeds were chosen out of [42, 0, 100] for all the variations of RNN cells.
+```
+input length: 100, test length 500, delimiter length: 3, train output length 100, test output length 200, batch size 64, embedding size 16, hidden size 256, epochs 10, lr 0.005, train samples 10000, test samples 1000
+```
+
+### LSTM
+seed 0
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <img src="./logs/lstm_100_E32_H256_lr0.01_N50k_b64_seed0/train_loss.png" width="300" height="200" style="margin: 10px;">
+  <img src="./logs/lstm_100_E32_H256_lr0.01_N50k_b64_seed0/train_accuracy.png" width="300" height="200" style="margin: 10px;">
+</div>
+
+seed 42
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <img src="./logs/lstm_100_E32_H256_lr0.01_N50k_b64_seed42/train_loss.png" width="300" height="200" style="margin: 10px;">
+  <img src="./logs/lstm_100_E32_H256_lr0.01_N50k_b64_seed42/train_accuracy.png" width="300" height="200" style="margin: 10px;">
+</div>
+
+seed 100
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <img src="./logs/lstm_100_E32_H256_lr0.01_N50k_b64_seed100/train_loss.png" width="300" height="200" style="margin: 10px;">
+  <img src="./logs/lstm_100_E32_H256_lr0.01_N50k_b64_seed100/train_accuracy.png" width="300" height="200" style="margin: 10px;">
+</div>
+
+### multiplicative LSTM
+seed 0
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <img src="./logs/mlstm_100_E32_H256_lr0.01_N50k_b64_seed0/train_loss.png" width="300" height="200" style="margin: 10px;">
+  <img src="./logs/mlstm_100_E32_H256_lr0.01_N50k_b64_seed0/train_accuracy.png" width="300" height="200" style="margin: 10px;">
+</div>
+
+seed 42
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <img src="./logs/mlstm_100_E32_H256_lr0.01_N50k_b64_seed42/train_loss.png" width="300" height="200" style="margin: 10px;">
+  <img src="./logs/mlstm_100_E32_H256_lr0.01_N50k_b64_seed42/train_accuracy.png" width="300" height="200" style="margin: 10px;">
+</div>
+
+seed 100
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <img src="./logs/mlstm_100_E32_H256_lr0.01_N50k_b64_seed100/train_loss.png" width="300" height="200" style="margin: 10px;">
+  <img src="./logs/mlstm_100_E32_H256_lr0.01_N50k_b64_seed100/train_accuracy.png" width="300" height="200" style="margin: 10px;">
+</div>
+
+### GRU
+seed 0
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <img src="./logs/gru_100_E32_H256_lr0.01_N50k_b64_seed0/train_loss.png" width="300" height="200" style="margin: 10px;">
+  <img src="./logs/gru_100_E32_H256_lr0.01_N50k_b64_seed0/train_accuracy.png" width="300" height="200" style="margin: 10px;">
+</div>
+
+seed 42
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <img src="./logs/gru_100_E32_H256_lr0.01_N50k_b64_seed42/train_loss.png" width="300" height="200" style="margin: 10px;">
+  <img src="./logs/gru_100_E32_H256_lr0.01_N50k_b64_seed42/train_accuracy.png" width="300" height="200" style="margin: 10px;">
+</div>
+
+seed 100
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <img src="./logs/gru_100_E32_H256_lr0.01_N50k_b64_seed100/train_loss.png" width="300" height="200" style="margin: 10px;">
+  <img src="./logs/gru_100_E32_H256_lr0.01_N50k_b64_seed100/train_accuracy.png" width="300" height="200" style="margin: 10px;">
+</div>
+
+### multiplicative GRU
+seed 0
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <img src="./logs/mgru_100_E32_H256_lr0.01_N50k_b64_seed0/train_loss.png" width="300" height="200" style="margin: 10px;">
+  <img src="./logs/mgru_100_E32_H256_lr0.01_N50k_b64_seed0/train_accuracy.png" width="300" height="200" style="margin: 10px;">
+</div>
+
+seed 42
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <img src="./logs/mgru_100_E32_H256_lr0.01_N50k_b64_seed42/train_loss.png" width="300" height="200" style="margin: 10px;">
+  <img src="./logs/mgru_100_E32_H256_lr0.01_N50k_b64_seed42/train_accuracy.png" width="300" height="200" style="margin: 10px;">
+</div>
+
+seed 100
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <img src="./logs/mgru_100_E32_H256_lr0.01_N50k_b64_seed100/train_loss.png" width="300" height="200" style="margin: 10px;">
+  <img src="./logs/mgru_100_E32_H256_lr0.01_N50k_b64_seed100/train_accuracy.png" width="300" height="200" style="margin: 10px;">
+</div>
