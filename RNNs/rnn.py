@@ -558,7 +558,7 @@ if __name__ == '__main__':
                 hidden_size, device, args.cell)
     
     # Load a saved model
-    model = torch.load('logs/<model_path>')
+    # model = torch.load('logs/<model_path>')
 
     # check whether parameters of RNN as well as the required cell are obtained
     for name, param in model.named_parameters():
@@ -584,6 +584,7 @@ if __name__ == '__main__':
         cell_state = torch.zeros(batch_size, hidden_size, device=device)
         # shuffle training data
         train_indices = torch.randperm(train_samples)
+        total_samples = 0
         tqdm.write("Training batches...")
         for index in tqdm(range(0, train_samples, batch_size)):
             batch_indices = train_indices[index:index+batch_size]
@@ -591,7 +592,10 @@ if __name__ == '__main__':
                                  dtype=torch.long).to(device)
             batchY = torch.tensor(Y_train[batch_indices]).to(device)
             current_batch_size = len(batch_indices)
-            
+            if current_batch_size < batch_size:
+                break
+            total_samples += current_batch_size
+
             Y_one_hot = F.one_hot(batchY, input_size).float()
             optimizer.zero_grad()
             output = model(batchX) # [batch_size, seq_length, vocab_size]
@@ -615,7 +619,7 @@ if __name__ == '__main__':
             # Calculate accuracy at each time step and average
             time_step_accuracies = []
             for t in range(output.shape[1]):
-                time_step_output = output[:, t, :]
+                time_step_output = F.softmax(output[:, t, :], dim=-1)
                 time_step_target = Y_one_hot[:, t, :]
                 accuracy = (torch.argmax(time_step_output, dim=-1) == torch.argmax(time_step_target, dim=-1)).float().mean()
                 time_step_accuracies.append(accuracy)
@@ -625,9 +629,9 @@ if __name__ == '__main__':
             # Y_one_hot = Y_one_hot[:, -train_output_len:, :]
             # # predictions = [Batch, Time, Output]
             # train_accuracy += (torch.argmax(output, dim=-1) == torch.argmax(Y_one_hot, dim=-1)).sum().item()
-        train_loss /= train_samples
+        train_loss /= total_samples
         train_losses.append(train_loss)
-        train_accuracy /= train_samples
+        train_accuracy /= total_samples
         train_accuracies.append(train_accuracy)
         # print(f"Epoch {epoch} | Training, Loss: {train_loss:.4f}, Accuracy: {train_accuracy:.4f}")
 
@@ -645,10 +649,14 @@ if __name__ == '__main__':
     test_loss = 0.0
     test_accuracy = 0.0
     start_time = time.time()
+    total_samples = 0
     for index in range(0, test_samples, batch_size):
         batchX = torch.tensor(X_test[index:index+batch_size]).to(device=device)
         batchY = torch.tensor(Y_test[index:index+batch_size]).to(device=device)
         current_batch_size = len(batchX)
+        if current_batch_size < batch_size:
+            break
+        total_samples += current_batch_size
 
         # If test data has more time steps than train data
         # Then we split the test data into multiple folds 
@@ -656,19 +664,16 @@ if __name__ == '__main__':
         Y_one_hot = F.one_hot(batchY, input_size).float()
         predictions = torch.zeros_like(Y_one_hot)
         if test_size > train_size:
-            folds = test_size // train_size
-            
             # since input length is longer than train size, we need to preserve h and cell state (in case of lstm/mlstm)
             h = torch.zeros(batch_size, hidden_size, device=device)
             cell_state = torch.zeros(batch_size, hidden_size, device=device)
-            # for f in range(folds):
             for fold in range(0, test_size, train_size):
                 X_fold = batchX[:, fold: fold+train_size]
                 # Y_fold = batchY[:, fold: fold+train_size]
                 if args.cell == "lstm" or args.cell == "mlstm":
-                    output, h, cell_state = model(X_fold, h=h, cell_state=cell_state, return_state=True) # [batch_size, seq_length, input_size]
+                    output, h, cell_state = model(X_fold, h=h, cell_state=cell_state, return_states=True) # [batch_size, seq_length, input_size]
                 else:
-                    output, h = model(X_fold, h=h, return_state=True) # [batch_size, seq_length, input_size]
+                    output, h = model(X_fold, h=h, return_states=True) # [batch_size, seq_length, input_size]
                 # predictions[:, fold: fold+train_size, :] = output
                 predictions[:, fold: fold+train_size, :] = output
 
@@ -686,11 +691,11 @@ if __name__ == '__main__':
             # Calculate accuracy at each time step and average
             time_step_accuracies = []
             for t in range(predictions.shape[1]):
-                time_step_output = predictions[:, t, :]
+                time_step_output = F.softmax(predictions[:, t, :], dim=-1)
                 time_step_target = Y_one_hot[:, t, :]
                 accuracy = (torch.argmax(time_step_output, dim=-1) == torch.argmax(time_step_target, dim=-1)).float().mean()
                 time_step_accuracies.append(accuracy)
-            train_accuracy += torch.mean(torch.stack(time_step_accuracies)).item() * current_batch_size
+            test_accuracy += torch.mean(torch.stack(time_step_accuracies)).item() * current_batch_size
 
             # loss = criterion(predictions, Y_one_hot)
             # predictions = predictions[:, -test_output_len:, :]
@@ -698,8 +703,8 @@ if __name__ == '__main__':
             # accuracy = (torch.argmax(output, dim=-1) == torch.argmax(Y_one_hot, dim=-1)).sum().item()
             # test_loss += loss.item() * current_batch_size
             # test_accuracy += accuracy
-    test_loss /= test_samples
-    test_accuracy /= test_samples
+    test_loss /= total_samples
+    test_accuracy /= total_samples
     # print(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}")
     logger.info(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}")
     # print(f"test time: {time.time()-start_time}")
