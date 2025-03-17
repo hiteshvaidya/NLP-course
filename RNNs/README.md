@@ -69,6 +69,15 @@ input sample converted from character to index: </br>
        ' ', ' ', ' ', ' ']
 ```
 
+## Model Architecture
+The RNN model has following architecture
+```
+Embedding layer - [seq_length, embedding_size]
+RNN cell (<rnn>/<lstm>/<gru>/<mlstm>/<mgru>) - [embedding_size, hidden_size]
+Linear layer - [hidden_size, vocab size]
+```
+The code is well commented to identify respective classes for all types of RNN cells mentioned above. **[class RNN()](rnn.py#L277)** includes code for the complete architecture and all the classes above it encapsulate code for respective types of cells.
+
 ## Training/Testing
 The program uses command line arguments </br>
 | Argument                 | Variable Name       | Description                                 |
@@ -98,5 +107,24 @@ The [run.sh](./run.sh) specifies a list of all the run commands that I used for 
 **PS: to utilize gpu on mac, please specify `-d mps` in the command line arguments. If the pytorch in virtual environment is installed for metal, it will utilize gpu on mac**
 
 ### Logs
-All the logs are saved as per the name provided along with `-l or --log` in the command line argument. Any experiment saves the respective model (.pth), runtime log, plots for loss and accuracy. To load a saved trained model (`.pth`), you can comment [line 557 of rnn.py](rnn.py#L557) and load the existing model at [line 561](rnn.py#L561) by providing the correct relative path.
+All the logs are saved as per the name provided along with `-l or --log` in the command line argument. Any experiment saves the respective model (.pth), runtime log, plots for loss and accuracy. To load a saved trained model (`.pth`), you can comment **[line 557 of rnn.py](rnn.py#L557)** and load the existing model at **[line 561](rnn.py#L561)** by providing the correct relative path.
 
+
+### Model Optimization
+- The loss and accuracy is calculated at every time step between `output[:, t, :]` and `Y_one_hot[:, t, :]` and averaged over all time steps
+- Gradients are clipped between `[-1.0, 1.0]`
+- Used `Adam` optimizer for training
+
+
+## Testing
+As mentioned in the announcement for this homework, if model is trained for **K** time steps, it is tested for **K+M** time steps. While doing this, the hidden state and cell state (for lstm and mlstm) is preserved and passed again as input to `model.forward()`. Such a process helps to preserve the hidden context of the input for long number of time steps.
+
+## Trials and Observations
+- The model was tested with various embedding sizes out of [8, 16, 32]. The general rule of thumb followed was, [hidden_size / 2] or [hidden_size / 4].
+- The hidden size was tested in the range [64, 128, 256]. The model showed better performance with 256 hidden size. 
+- learning rate was chosen from [0.01, 0.001, 0.005]. I observed that higher learning rate may cause stability issues in the model. 
+- batch size was set to [32, 64].
+- The loss and accuracy graphs indicate that 0.01 is too high value and the optimization surpasses minima and swings back and forth. Therefore, **lr=0.005** suits better for this problem.
+- It was observed that all networks trained better with 50000 samples as opposed to just 10000 train samples. All the train samples were of length 100. The testing was performed with 10000 samples of length 500 as mentioned in the requirements of the assignment.
+
+For the final trials, the seeds were chosen out of [42, 0, 100] for all the variations of RNN cells.
