@@ -20,8 +20,10 @@
     tokenized_val.set_format("torch", columns=["input_ids", "attention_mask", "labels"])```
 - In `TrainingArugments()`, evaluation_strategy was corrected to `eval_strategy`
 
-## Files:
+## Results:
 Please check [distilgpt2+wiki.ipynb](distilgpt2+wiki.ipynb), [gpt2+wiki.ipynb](gpt2+wiki.ipynb) for complete implementations.
+### Weights and Biases runs:
+[https://wandb.ai/hiteshuv-university-of-south-florida/huggingface?nw=nwuserhiteshuv](https://wandb.ai/hiteshuv-university-of-south-florida/huggingface?nw=nwuserhiteshuv)
 
 ## NOTE:
 **PS**: I ran out of compute instances therefore, I could not complete more experiments.
