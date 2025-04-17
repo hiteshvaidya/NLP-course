@@ -22,6 +22,20 @@
 
 ## Results:
 Please check [distilgpt2+wiki.ipynb](distilgpt2+wiki.ipynb), [gpt2+wiki.ipynb](gpt2+wiki.ipynb) for complete implementations.
+
+## Example outputs:
+- wikitext:
+```
+Generated␣text:
+ In␣the␣future,␣we␣wish␣to␣learn␣NLP␣and␣develop␣novel␣artificial␣intelligence␣agents.
+```
+- Penn Tree bank:
+```
+Prompt: The stock market reacted negatively to the news that'
+Generated␣text:
+ The stock market reacted negatively to the news that's the <unk> of the new york stock exchange
+```
+
 ### Weights and Biases runs:
 [https://wandb.ai/hiteshuv-university-of-south-florida/huggingface?nw=nwuserhiteshuv](https://wandb.ai/hiteshuv-university-of-south-florida/huggingface?nw=nwuserhiteshuv)
 
